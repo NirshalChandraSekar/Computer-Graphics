@@ -73,7 +73,11 @@ Point2D project(Point2D p, Line2D l){
 //Compute the projection of the line l onto point p
 //The result is a line that lies on point p in the same direction of l
 Line2D project(Line2D l, Point2D p){
-  return Line2D(0,0,0); //Wrong, fix me...
+  float a = l.x;
+  float b = l.y;
+  float c = -(a * p.x + b * p.y);
+
+  return Line2D(a, b, c);
 }
 
 //Compute the angle point between lines l1 and l2 in radians
@@ -141,12 +145,30 @@ float areaTriangle(Point2D t1, Point2D t2, Point2D t3){
 /*
 CHECK THIS LATER TO TAKE THE SEGMENT INSTEAD OF THE FULL INFINITE LINE
 */
+
+float pointSegmentDist(Point2D p, Point2D s1, Point2D s2){
+  Dir2D segment = s2 - s1;
+  Dir2D toPoint = p - s1;
+  float segmentLengthSqr = segment.magnitudeSqr();
+  float t = (toPoint.x * segment.x + toPoint.y * segment.y) / segmentLengthSqr;
+
+  if (t < 0.0f) {
+    return dist(p, s1);
+  }
+  else if (t > 1.0f) {
+    return dist(p, s2);
+  }
+
+  Point2D projection = Point2D(s1.x + t * segment.x, s1.y + t * segment.y);
+  return dist(p, projection);
+}
+
 float pointTriangleEdgeDist(Point2D p, Point2D t1, Point2D t2, Point2D t3){
   if(pointInTriangle(p, t1, t2, t3)) return 0;
-  float d1 = dist(p, join(t1, t2));
-  float d2 = dist(p, join(t2, t3));
-  float d3 = dist(p, join(t3, t1));
-  return min(d1, min(d2, d3));
+  float d1 = pointSegmentDist(p, t1, t2);
+  float d2 = pointSegmentDist(p, t2, t3);
+  float d3 = pointSegmentDist(p, t3, t1);
+  return fmin(d1, fmin(d2, d3));
 }
 
 //Compute the distance from the point p to the closest of three corners of
@@ -156,26 +178,55 @@ float pointTriangleCornerDist(Point2D p, Point2D t1, Point2D t2, Point2D t3){
   float distance1 = sqrt(pow(p.x - t1.x, 2) + pow(p.y - t1.y, 2));
   float distance2 = sqrt(pow(p.x - t2.x, 2) + pow(p.y - t2.y, 2));
   float distance3 = sqrt(pow(p.x - t3.x, 2) + pow(p.y - t3.y, 2));
-  return min(distance1, min(distance2, distance3));
+  return fmin(distance1, fmin(distance2, distance3));
 }
 
 //Compute if the quad (p1,p2,p3,p4) is convex.
 //Your code should work for both clockwise and counterclockwise windings
 //The result is a boolean
 bool isConvex_Quad(Point2D p1, Point2D p2, Point2D p3, Point2D p4){
-  return false; //Wrong, fix me...
+  auto crossZ = [](Point2D a, Point2D b, Point2D c){
+    float x1 = b.x - a.x;
+    float y1 = b.y - a.y;
+    float x2 = c.x - b.x;
+    float y2 = c.y - b.y;
+    return x1 * y2 - y1 * x2;
+  };
+
+  float c1 = crossZ(p1, p2, p3);
+  float c2 = crossZ(p2, p3, p4);
+  float c3 = crossZ(p3, p4, p1);
+  float c4 = crossZ(p4, p1, p2);
+
+  // Check if all cross products have the same sign
+  bool allPos = (c1 > 0 && c2 > 0 && c3 > 0 && c4 > 0);
+  bool allNeg = (c1 < 0 && c2 < 0 && c3 < 0 && c4 < 0);
+
+  return allPos || allNeg;
 }
 
 //Compute the reflection of the point p about the line l
 //The result is a point
 Point2D reflect(Point2D p, Line2D l){
-  return Point2D(0,0); //Wrong, fix me...
+  Line2D ln = l.normalized();   
+  MultiVector P = MultiVector(p); 
+  MultiVector P_ref = ln * P * ln; // sandwich product
+  return Point2D(P_ref); // extract back to point
 }
 
 //Compute the reflection of the line d about the line l
 //The result is a line
 Line2D reflect(Line2D d, Line2D l){
-  return Line2D(0,0,0); //Wrong, fix me...
+  const float EPS = 1e-8f;
+  if (l.magnitude() < EPS) return d;
+
+  Line2D ln = l.normalized();
+
+  MultiVector L = MultiVector(ln);
+  MultiVector D = MultiVector(d);
+  MultiVector R = L * D * L.reverse();
+
+  return Line2D(R);
 }
 
 #endif
