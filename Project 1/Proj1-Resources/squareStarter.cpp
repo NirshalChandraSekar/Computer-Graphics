@@ -22,7 +22,7 @@ using namespace std;
 
 
 // Name of image texture
-string textureName = "test.ppm";
+string textureName = "goldy.ppm";
 
 // Screen size
 int screen_width = 800;
@@ -106,13 +106,16 @@ unsigned char* loadImage(int& img_w, int& img_h){
    // TODO: This loop reads fake data. Replace it with code to read in the actual pixel values from the file
    // TODO:    ... see the project description for a hint on how to do this
    for (int i = 0; i < img_h; i++){
-      float fi = i/(float)img_h;
       for (int j = 0; j < img_w; j++){
-         float fj = j/(float)img_w;
-         img_data[i*img_w*4 + j*4] = 50;  // Red 
-         img_data[i*img_w*4 + j*4 + 1] = fj*150; // Green
-         img_data[i*img_w*4 + j*4 + 2] = fi*250; // Blue
-         img_data[i*img_w*4 + j*4 + 3] = 255; // Alpha
+         int r,g,b;
+         ppmFile >> r >> g >> b;
+
+         int flipped_i = img_h-1-i; // PPM files are stored "upside down" so we need to flip the image data
+         int index = 4*(flipped_i*img_w + j);
+         img_data[index + 0] = (unsigned char) r; //Red channel
+         img_data[index + 1] = (unsigned char) g; //Green channel
+         img_data[index + 2] = (unsigned char) b; //Blue channel
+         img_data[index + 3] = 255; //Alpha channel
       }
    }
    return img_data;
@@ -121,6 +124,23 @@ unsigned char* loadImage(int& img_w, int& img_h){
 //TODO: Choose between translation, rotation, and scaling based on where the mouse was when the user clicked
 // In this temporary example code, I always assume a translation operation. Fix this to switch between the 3 operations
 // of translate, rotate, and scale based on where the mouse was when the user clicked.
+
+bool check_inside_rectangle(Point2D pt, ){
+   // FIX ME - Implement this function to return true if the point pt is inside the rectangle, false otherwise
+   return false;
+}
+
+bool check_on_edge(Point2D pt){
+   // FIX ME - Implement this function to return true if the point pt is on the edge of the rectangle, false otherwise
+   // You can use a small threshold value to determine if the point is "close enough" to the edge
+   return false;
+}
+
+bool check_on_corner(Point2D pt){
+   // FIX ME - Implement this function to return true if the point pt is on a corner of the rectangle, false otherwise
+   // You can use a small threshold value to determine if the point is "close enough" to the corner
+   return false;
+}
 
 void mouseClicked(float m_x, float m_y){
    printf("Clicked at %f, %f\n",m_x,m_y);
@@ -132,11 +152,14 @@ void mouseClicked(float m_x, float m_y){
    clicked_angle = rect_angle;
    clicked_size = rect_scale;
 
-   // Helper global variables to determine if we are translating, rotating, or scaling
+   // // Helper global variables to determine if we are translating, rotating, or scaling
    // You will need to change this logic to choose between the 3 operations based on where the mouse was clicked
-   do_translate = true; // FIX ME - Should only be true if mouse clicked on the rectangle in the right region
+   do_translate = false; // FIX ME - Should only be true if mouse clicked on the rectangle in the right region
    do_rotate = false;
    do_scale = false;
+
+   // Check if the click is inside the rectangle, by checking if its inside a closed quadrilateral
+
 }
 
 // TODO 1: Update the position, rotation angle, or scale of the rectangle based on how far the mouse has moved
@@ -230,6 +253,8 @@ const GLchar* fragmentSource =
    "#version 150 core\n"
    "uniform sampler2D tex0; in vec2 texcoord; out vec3 outColor;" // Input texture and texture coordinates from vertex shader, output is pixel color
    "void main() { outColor = texture(tex0, texcoord).rgb; }"; // Set pixel color based on texture color at the texture coordinates
+
+
 
 int main(int argc, char *argv[]){
 
