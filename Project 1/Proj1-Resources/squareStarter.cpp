@@ -18,11 +18,14 @@
 #include <fstream>
 #include <string>
 #include "pga.h"
+#include <vector>
 using namespace std;
 
 
 // Name of image texture
-string textureName = "goldy.ppm";
+vector<string> available_textures = {"goldy.ppm", "brick.ppm", "test.ppm"};
+int textureIndex = 0;
+string textureName = available_textures[textureIndex]; // Default to first texture
 
 // Screen size
 int screen_width = 800;
@@ -105,6 +108,8 @@ unsigned char* loadImage(int& img_w, int& img_h){
 
    // TODO: This loop reads fake data. Replace it with code to read in the actual pixel values from the file
    // TODO:    ... see the project description for a hint on how to do this
+
+   ////////// Default Image Loading //////////
    for (int i = 0; i < img_h; i++){
       for (int j = 0; j < img_w; j++){
          int r,g,b;
@@ -118,6 +123,24 @@ unsigned char* loadImage(int& img_w, int& img_h){
          img_data[index + 3] = 255; //Alpha channel
       }
    }
+
+   ////////// Brighten Image Loading //////////
+   // for (int i = 0; i < img_h; i++){
+   //    for (int j = 0; j < img_w; j++){
+   //       int r,g,b;
+   //       ppmFile >> r >> g >> b;
+   //       r = min(r*2.0,255.0); // Brighten the image by multiplying each color channel by 1.5 (clamp to 255)
+   //       g = min(g*2.0,255.0);
+   //       b = min(b*2.0,255.0);
+   //       int flipped_i = img_h-1-i; // PPM files are stored "upside down" so we need to flip the image data
+   //       int index = 4*(flipped_i*img_w + j);
+   //       img_data[index + 0] = (unsigned char) r; //Red channel
+   //       img_data[index + 1] = (unsigned char) g; //Green channel
+   //       img_data[index + 2] = (unsigned char) b; //Blue channel
+   //       img_data[index + 3] = 255; //Alpha channel
+   //    }
+   // }
+
    return img_data;
 }
 
@@ -125,21 +148,21 @@ unsigned char* loadImage(int& img_w, int& img_h){
 // In this temporary example code, I always assume a translation operation. Fix this to switch between the 3 operations
 // of translate, rotate, and scale based on where the mouse was when the user clicked.
 
-bool check_inside_rectangle(Point2D pt, ){
-   // FIX ME - Implement this function to return true if the point pt is inside the rectangle, false otherwise
-   return false;
-}
+float pointSegmentDist(Point2D p, Point2D s1, Point2D s2){
+  Dir2D segment = s2 - s1;
+  Dir2D toPoint = p - s1;
+  float segmentLengthSqr = segment.magnitudeSqr();
+  float t = (toPoint.x * segment.x + toPoint.y * segment.y) / segmentLengthSqr;
 
-bool check_on_edge(Point2D pt){
-   // FIX ME - Implement this function to return true if the point pt is on the edge of the rectangle, false otherwise
-   // You can use a small threshold value to determine if the point is "close enough" to the edge
-   return false;
-}
+  if (t < 0.0f) {
+    return 1.0; // Just return a large value if its outside the segment
+  }
+  else if (t > 1.0f) {
+    return 1.0; // Just return a large value if its outside the segment
+  }
 
-bool check_on_corner(Point2D pt){
-   // FIX ME - Implement this function to return true if the point pt is on a corner of the rectangle, false otherwise
-   // You can use a small threshold value to determine if the point is "close enough" to the corner
-   return false;
+  Point2D projection = Point2D(s1.x + t * segment.x, s1.y + t * segment.y);
+  return sqrt(pow(p.x - projection.x, 2) + pow(p.y - projection.y, 2)); 
 }
 
 void mouseClicked(float m_x, float m_y){
@@ -159,8 +182,48 @@ void mouseClicked(float m_x, float m_y){
    do_scale = false;
 
    // Check if the click is inside the rectangle, by checking if its inside a closed quadrilateral
+   float area_total = fabs(vee(p1,p2,p3)) + fabs(vee(p1,p3,p4));
+   float area_parts = fabs(vee(clicked_mouse,p1,p2)) + fabs(vee(clicked_mouse,p2,p3)) +
+                     fabs(vee(clicked_mouse,p3,p4)) + fabs(vee(clicked_mouse,p4,p1));
 
+   if (fabs(area_total - area_parts) < 1e-3) {
+      do_translate = true; // clicked inside → translate
+   } 
+   else {
+      // Check if click is near corners or edges
+      float corner_threshold = 0.03; // Distance threshold for corner detection
+      float edge_threshold = 0.04;   // Distance threshold for edge detection
+      
+      // Calculate distances to each corner
+      float dist_to_p1 = (clicked_mouse - p1).magnitude();
+      float dist_to_p2 = (clicked_mouse - p2).magnitude();
+      float dist_to_p3 = (clicked_mouse - p3).magnitude();
+      float dist_to_p4 = (clicked_mouse - p4).magnitude();
+
+      float min_corner_dist = min(min(dist_to_p1, dist_to_p2), min(dist_to_p3, dist_to_p4));
+      
+      // Calculate distances to each edge
+      float d1 = pointSegmentDist(clicked_mouse, p1, p2);
+      float d2 = pointSegmentDist(clicked_mouse, p2, p3);
+      float d3 = pointSegmentDist(clicked_mouse, p3, p4);
+      float d4 = pointSegmentDist(clicked_mouse, p4, p1);
+
+      float min_edge_dist = min(min(d1,d2),min(d3,d4));
+      
+      if (min_corner_dist < corner_threshold) {
+         do_scale = true; // Near corner → scale
+      } else if (min_edge_dist < edge_threshold) {
+         do_rotate = true; // Near edge → rotate
+      } else {
+         // For clicks far from both corners and edges, don't perform any operation
+         // This prevents unintended operations when clicking far from the square
+         do_translate = false;
+         do_rotate = false;
+         do_scale = false;
+      }
+   }
 }
+
 
 // TODO 1: Update the position, rotation angle, or scale of the rectangle based on how far the mouse has moved
 //        I've implemented translation for you as an example. You need to implement rotation and scaling
@@ -178,13 +241,34 @@ void mouseDragged(float m_x, float m_y){
    }
 
    if (do_scale){
-      // Compute the new size, rect_scale, based on how far the mouse has moved around the rectangle since the initial click
-      rect_scale = clicked_size; // FIX ME - Replace this line with your code to compute the new scale
+      // Compute the new size, rect_scale, based on how far the mouse has moved from the rectangle center
+      // Calculate distance from rectangle center to current mouse position
+      float current_dist = sqrt(pow(cur_mouse.x - clicked_pos.x, 2) + pow(cur_mouse.y - clicked_pos.y, 2));
+      // Calculate distance from rectangle center to initial click position  
+      float initial_dist = sqrt(pow(clicked_mouse.x - clicked_pos.x, 2) + pow(clicked_mouse.y - clicked_pos.y, 2));
+      
+      // Avoid division by zero and maintain minimum scale
+      if (initial_dist > 1e-6) {
+         float scale_factor = current_dist / initial_dist;
+         rect_scale = clicked_size * scale_factor;
+         // Clamp scale to reasonable bounds
+         if (rect_scale < 0.1f) rect_scale = 0.1f;
+         if (rect_scale > 5.0f) rect_scale = 5.0f;
+      } else {
+         rect_scale = clicked_size;
+      }
    }
 
    if (do_rotate){
-      // Compute the new angle, rect_angle, based on how far the mouse has moved around the rectangle since the initial click
-      rect_angle = clicked_angle; // FIX ME - Replace this line with your code to compute the new angle
+      // Compute the new angle, rect_angle, based on how far the mouse has moved around the rectangle center
+      // Calculate angle from rectangle center to current mouse position
+      float current_angle = atan2(cur_mouse.y - clicked_pos.y, cur_mouse.x - clicked_pos.x);
+      // Calculate angle from rectangle center to initial click position
+      float initial_angle = atan2(clicked_mouse.y - clicked_pos.y, clicked_mouse.x - clicked_pos.x);
+      
+      // Compute the angle difference and add to the initial rectangle angle
+      float angle_diff = initial_angle - current_angle;
+      rect_angle = clicked_angle + angle_diff;
    }
 
    // Assuming the angle (rect_angle), position (rect_pos), and scale (rect_scale) of the rectangle have been updated correctly above
@@ -234,6 +318,22 @@ void updateVertices(){
 void r_keyPressed(){
    cout << "The 'r' key was pressed" <<endl;
    // FIX ME - You should reset the rectangle position, size, and angle to its initial values, and update the vertices
+   rect_pos = Point2D(0,0);
+   rect_scale = 1;
+   rect_angle = 0;
+   p1 = init_p1;
+   p2 = init_p2;
+   p3 = init_p3;
+   p4 = init_p4;
+   updateVertices();
+}
+
+void t_keyPressed(){
+   // change to next texture index
+   textureIndex = (textureIndex + 1) % available_textures.size();
+   textureName = available_textures[textureIndex];
+   cout << "The 't' key was pressed. Changing texture to " << textureName << endl;
+   
 }
 
 // ----------------------- //
@@ -419,6 +519,16 @@ int main(int argc, char *argv[]){
                   SDL_SetWindowFullscreen(window, fullscreen);
                }
                if (event.key.key == SDLK_R) r_keyPressed();
+               if (event.key.key == SDLK_T){
+                  t_keyPressed();
+                  delete [] img_data;                 // free previous image data
+                  img_data = loadImage(img_w, img_h); // load new image based on updated textureName
+
+                  glActiveTexture(GL_TEXTURE0);
+                  glBindTexture(GL_TEXTURE_2D, tex0);
+                  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img_w, img_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data);
+                  glGenerateMipmap(GL_TEXTURE_2D);
+               }
                break;
 
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
