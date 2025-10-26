@@ -1,0 +1,16 @@
+#This is a sphere lit by a green spot light pointing from right to left.
+#The background is 50% gray.
+film_resolution: 640 480
+
+material: .75 .75 .75 .75 .75 .75 .3 .3 .3 32 .2 .2 .2 1.5
+sphere: 0 -0.5 -2 0.5
+material: .75 .75 .75 .75 .75 .75 .3 .3 .3 32 .2 .2 .2 1.5
+sphere: 0 0.5 -2 0.5
+
+
+ambient_light: 0.1 0.1 0.1
+directional_light: 1 1 1  1 0 0
+
+
+background: .5 .5 .5
+output_image: results/sphere_spot_trial.png

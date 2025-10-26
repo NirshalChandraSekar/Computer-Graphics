@@ -1,0 +1,9 @@
+#This is a sphere lit by an ambient light on a white background.
+material: 1 1 1 1 1 1 0 0 0 5 0 0 0 1
+sphere: 0 0 -2 1
+ambient_light: 0.3 0.3 0.3
+background: 1 1 1
+
+camera_pos: 0 0 1
+film_resolution: 640 480
+output_image: results/sphere_ambient_default.png
