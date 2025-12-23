@@ -1,0 +1,1 @@
+clang++ -Wall game.cpp -xc glad/glad.c -F ~/Library/Frameworks -framework SDL3 -Wl,-rpath,$HOME/Library/Frameworks -o game
